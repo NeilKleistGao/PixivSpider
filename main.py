@@ -1,9 +1,21 @@
 import sys  
 import webbrowser
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PixivSpider.CrawlData import CrawlData
+from PixivSpider.PixivSpider import PixivSpider
 
 class mainWidget(QWidget):
+    spider = PixivSpider()
+    urls = ["https://www.pixiv.net/search.php?s_mode=s_tag&word=%s", 
+    "https://www.pixiv.net/ranking.php?mode=daily",
+    "https://www.pixiv.net/ranking.php?mode=weekly",
+     "https://www.pixiv.net/ranking.php?mode=monthly",
+      "https://www.pixiv.net/ranking.php?mode=rookie",
+       "https://www.pixiv.net/ranking.php?mode=original",
+       "https://www.pixiv.net/ranking.php?mode=male",
+       "https://www.pixiv.net/ranking.php?mode=female"]
+    is_crawling = False
     def setupUi(self, Form):
         Form.setObjectName("Form")
         Form.resize(730, 465)
@@ -117,15 +129,13 @@ class mainWidget(QWidget):
         _translate = QtCore.QCoreApplication.translate
         self.typeBox.insertItem(0, _translate("Form", "自定义搜索"))
         self.typeBox.insertItem(1, _translate("Form", "今日综合排行榜"))
-        self.typeBox.insertItem(2, _translate("Form", "今日插画排行榜"))
-        self.typeBox.insertItem(3, _translate("Form", "今日动图排行榜"))
-        self.typeBox.insertItem(4, _translate("Form", "今日漫画排行榜"))
-        self.typeBox.insertItem(5, _translate("Form", "受男性欢迎"))
-        self.typeBox.insertItem(6, _translate("Form", "受女性欢迎"))
-        self.typeBox.insertItem(7, _translate("Form", "新人综合排行榜"))
-        self.typeBox.insertItem(8, _translate("Form", "新人插画排行榜"))
-        self.typeBox.insertItem(9, _translate("Form", "新人漫画排行榜"))
-        self.typeBox.insertItem(10, _translate("Form", "原创作品排行榜"))
+        self.typeBox.insertItem(2, _translate("Form", "本周插画排行榜"))
+        self.typeBox.insertItem(3, _translate("Form", "本月动图排行榜"))
+        self.typeBox.insertItem(4, _translate("Form", "新人综合排行榜"))
+        self.typeBox.insertItem(5, _translate("Form", "原创作品排行榜"))
+        self.typeBox.insertItem(6, _translate("Form", "受男性欢迎"))
+        self.typeBox.insertItem(7, _translate("Form", "受女性欢迎"))
+       
 
         self.pushButton.clicked.connect(self.clickLogin)
         self.pushButton_2.clicked.connect(self.clickBegin)
@@ -136,15 +146,52 @@ class mainWidget(QWidget):
         self.setupUi(self)
 
     def clickLogin(self):
-        _translate = QtCore.QCoreApplication.translate
-        self.state_label.setText(_translate("Form", "状态：已登录"))
+        username = self.userEdit.text().strip()
+        password = self.passwordEdit.text().strip()
+        if self.spider.login(username, password):
+            _translate = QtCore.QCoreApplication.translate
+            self.state_label.setText(_translate("Form", "状态：已登录"))
 
     def clickBegin(self):
+        if self.is_crawling:
+            return
+        data = self.getInformation()
+        if data == None:
+            return
+        self.spider.crawl(data)
+        self.is_crawling = True
         _translate = QtCore.QCoreApplication.translate
-        self.label_6.setText(_translate("Form", "状态：正在和雷欧抢批萨"))
+        self.label_6.setText(_translate("Form", "状态：正在爬取..."))
 
     def clickLink(self):
         webbrowser.open("https://github.com/NeilKleistGao/PixivSpider")
+
+    def getInformation(self):
+        data = CrawlData()
+        crawl_index = self.typeBox.currentIndex()
+        url = self.urls[crawl_index]
+
+        if crawl_index == 0:
+            tag = self.tagEdit.text().strip()
+            if tag == "":
+                QMessageBox.information(self, "PixivSpider", "自定义爬取标签不能为空！", QMessageBox.Yes)
+                return None
+            else:
+                url = url % tag
+        
+        crawl_level = 0
+        if self.lv2Button.isChecked():
+            crawl_level = 100
+        elif self.lv3Button.isChecked():
+            crawl_level = 500
+        elif self.lv4Button.isChecked():
+            crawl_level = 1000
+        elif self.lv5Button.isChecked():
+            crawl_level = 5000
+        
+        data.url = url
+        data.lowest_starts = crawl_level
+        return data
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
