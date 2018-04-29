@@ -2,20 +2,11 @@ import sys
 import webbrowser
 from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtCore import QTimer
 from PixivSpider.CrawlData import CrawlData
 from PixivSpider.PixivSpider import PixivSpider
 
 class mainWidget(QWidget):
-    spider = PixivSpider()
-    urls = ["https://www.pixiv.net/search.php?s_mode=s_tag&word=%s", 
-    "https://www.pixiv.net/ranking.php?mode=daily",
-    "https://www.pixiv.net/ranking.php?mode=weekly",
-     "https://www.pixiv.net/ranking.php?mode=monthly",
-      "https://www.pixiv.net/ranking.php?mode=rookie",
-       "https://www.pixiv.net/ranking.php?mode=original",
-       "https://www.pixiv.net/ranking.php?mode=male",
-       "https://www.pixiv.net/ranking.php?mode=female"]
-    is_crawling = False
     def setupUi(self, Form):
         Form.setObjectName("Form")
         Form.resize(730, 465)
@@ -98,6 +89,10 @@ class mainWidget(QWidget):
         self.commandLinkButton.setGeometry(QtCore.QRect(200, 420, 300, 31))
         self.commandLinkButton.setObjectName("commandLinkButton")
 
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update)
+        self.timer.start(1000)
+
         self.retranslateUi(Form)
         self.init()
         QtCore.QMetaObject.connectSlotsByName(Form)
@@ -145,12 +140,25 @@ class mainWidget(QWidget):
         super().__init__()
         self.setupUi(self)
 
+        self.spider = PixivSpider()
+        self.urls = ["https://www.pixiv.net/search.php?s_mode=s_tag&word=%s", 
+            "https://www.pixiv.net/ranking.php?mode=daily",
+            "https://www.pixiv.net/ranking.php?mode=weekly",
+            "https://www.pixiv.net/ranking.php?mode=monthly",
+            "https://www.pixiv.net/ranking.php?mode=rookie",
+            "https://www.pixiv.net/ranking.php?mode=original",
+            "https://www.pixiv.net/ranking.php?mode=male",
+            "https://www.pixiv.net/ranking.php?mode=female"]
+        self.is_crawling = False
+
     def clickLogin(self):
         username = self.userEdit.text().strip()
         password = self.passwordEdit.text().strip()
         if self.spider.login(username, password):
             _translate = QtCore.QCoreApplication.translate
             self.state_label.setText(_translate("Form", "状态：已登录"))
+        else:
+            QMessageBox.information(self, "PixivSpider", "登录失败，请检查你的网络链接或用户名和密码", QMessageBox.Yes)
 
     def clickBegin(self):
         if self.is_crawling:
@@ -192,6 +200,15 @@ class mainWidget(QWidget):
         data.url = url
         data.lowest_starts = crawl_level
         return data
+
+    def update(self):
+        if self.is_crawling:
+            schedule = self.spider.getSchedule()
+            self.progressBar.setProperty("value", schedule)
+
+            if self.spider.hasFinished():
+                self.is_crawling = False
+                QMessageBox.information(self, "PixivSpider", "爬取完成！", QMessageBox.Yes)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
