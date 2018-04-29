@@ -155,6 +155,7 @@ class mainWidget(QWidget):
         username = self.userEdit.text().strip()
         password = self.passwordEdit.text().strip()
         if self.spider.login(username, password):
+            QMessageBox.information(self, "PixivSpider", "登录成功！", QMessageBox.Yes)
             _translate = QtCore.QCoreApplication.translate
             self.state_label.setText(_translate("Form", "状态：已登录"))
         else:
