@@ -3,7 +3,7 @@ import webbrowser
 from PyQt5.QtWidgets import QApplication, QWidget, QMessageBox
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QTimer
-from PixivSpider.CrawlData import CrawlData
+from PixivSpider.DataStructures import CrawlData
 from PixivSpider.PixivSpider import PixivSpider
 
 class mainWidget(QWidget):
@@ -150,6 +150,7 @@ class mainWidget(QWidget):
             "https://www.pixiv.net/ranking.php?mode=male",
             "https://www.pixiv.net/ranking.php?mode=female"]
         self.is_crawling = False
+        self.tag = ""
 
     def clickLogin(self):
         username = self.userEdit.text().strip()
@@ -167,7 +168,7 @@ class mainWidget(QWidget):
         data = self.getInformation()
         if data == None:
             return
-        self.spider.crawl(data)
+        self.spider.crawl(self.tag ,data)
         self.is_crawling = True
         _translate = QtCore.QCoreApplication.translate
         self.label_6.setText(_translate("Form", "状态：正在爬取..."))
@@ -182,13 +183,14 @@ class mainWidget(QWidget):
 
         if crawl_index == 0:
             data.is_customize = True
-            tag = self.tagEdit.text().strip()
-            if tag == "":
+            self.tag = self.tagEdit.text().strip()
+            if self.tag == "":
                 QMessageBox.information(self, "PixivSpider", "自定义爬取标签不能为空！", QMessageBox.Yes)
                 return None
             else:
-                url = url % tag
-        
+                url = url % self.tag
+        else:
+            self.tag = self.typeBox.currentText()
         crawl_level = 0
         if self.lv2Button.isChecked():
             crawl_level = 100
