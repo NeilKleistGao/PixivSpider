@@ -3,3 +3,4 @@ class CrawlData(object):
         super().__init__()
         self.url = ""
         self.lowest_stars = 0
+        self.is_customize = False

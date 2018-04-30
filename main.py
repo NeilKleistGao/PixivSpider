@@ -124,8 +124,8 @@ class mainWidget(QWidget):
         _translate = QtCore.QCoreApplication.translate
         self.typeBox.insertItem(0, _translate("Form", "自定义搜索"))
         self.typeBox.insertItem(1, _translate("Form", "今日综合排行榜"))
-        self.typeBox.insertItem(2, _translate("Form", "本周插画排行榜"))
-        self.typeBox.insertItem(3, _translate("Form", "本月动图排行榜"))
+        self.typeBox.insertItem(2, _translate("Form", "本周综合排行榜"))
+        self.typeBox.insertItem(3, _translate("Form", "本月综合排行榜"))
         self.typeBox.insertItem(4, _translate("Form", "新人综合排行榜"))
         self.typeBox.insertItem(5, _translate("Form", "原创作品排行榜"))
         self.typeBox.insertItem(6, _translate("Form", "受男性欢迎"))
@@ -141,7 +141,7 @@ class mainWidget(QWidget):
         self.setupUi(self)
 
         self.spider = PixivSpider()
-        self.urls = ["https://www.pixiv.net/search.php?s_mode=s_tag&word=%s", 
+        self.urls = ["http://www.pixiv.net/search.php?word=%s", 
             "https://www.pixiv.net/ranking.php?mode=daily",
             "https://www.pixiv.net/ranking.php?mode=weekly",
             "https://www.pixiv.net/ranking.php?mode=monthly",
@@ -181,6 +181,7 @@ class mainWidget(QWidget):
         url = self.urls[crawl_index]
 
         if crawl_index == 0:
+            data.is_customize = True
             tag = self.tagEdit.text().strip()
             if tag == "":
                 QMessageBox.information(self, "PixivSpider", "自定义爬取标签不能为空！", QMessageBox.Yes)

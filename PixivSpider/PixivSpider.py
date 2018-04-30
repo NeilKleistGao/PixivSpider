@@ -3,6 +3,7 @@ from http import cookiejar
 from bs4 import BeautifulSoup
 import requests
 import re
+import math
 
 __all__ = ["crawl", "login", "getSchedule", "hasFinished"]
 
@@ -14,14 +15,24 @@ class PixivSpider(object):
         self.login_url = "https://accounts.pixiv.net/api/login?lang=zh"
         self.return_url = "https://www.pixiv.net"
         self.key_url = "https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index"
+
         self.header = { "Referer": "https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36" }  
 
         self.session = requests.session()
 
-    def crawl(self, CrawlData):
-        pass
+        self.total_count = 1
+        self.done_count = 0
+        self.page_count = 0
+
+        self.PAGE_MAX = 1000
+        self.COUNT_IN_PAGE = 40
+        self.COUNT_IN_RANK = 50
+        self.TOTAL_RANK = 500
+
+    def crawl(self, crawldata):
+        self.getCount(crawldata.url, crawldata.is_customize)
     
     def login(self, username, password):
         flag = True
@@ -43,10 +54,27 @@ class PixivSpider(object):
         return flag
 
     def getSchedule(self):
-        return 23
+        return 100 * self.done_count / self.total_count
     
     def hasFinished(self):
-        return False
+        flag = False
+        if self.done_count == self.total_count:
+            flag = True
+        return flag
+
+    def getCount(self, url, is_customize):
+        response = self.session.get(url, headers = self.header)
+        print(response.text)
+        if is_customize:
+            bs = BeautifulSoup(response.text, "lxml")
+            self.total_count = int(bs.find('span').string[:-1])
+            self.page_count = int(math.ceil(float(self.total_count) / self.COUNT_IN_PAGE))
+            if self.page_count > self.PAGE_MAX:
+                self.page_count = self.PAGE_MAX
+                self.total_count = self.page_count * self.COUNT_IN_PAGE
+        else:
+            self.total_count = self.TOTAL_RANK
+            self.page_count = self.TOTAL_RANK / self.COUNT_IN_RANK
 
     def getPostKey(self):
         response = self.session.get(self.key_url, headers = self.header)
