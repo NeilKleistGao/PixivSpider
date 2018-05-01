@@ -149,6 +149,7 @@ class mainWidget(QWidget):
             "https://www.pixiv.net/ranking.php?mode=original",
             "https://www.pixiv.net/ranking.php?mode=male",
             "https://www.pixiv.net/ranking.php?mode=female"]
+        self.has_login = False
         self.is_crawling = False
         self.tag = ""
 
@@ -159,11 +160,15 @@ class mainWidget(QWidget):
             QMessageBox.information(self, "PixivSpider", "登录成功！", QMessageBox.Yes)
             _translate = QtCore.QCoreApplication.translate
             self.state_label.setText(_translate("Form", "状态：已登录"))
+            self.has_login = True
         else:
             QMessageBox.information(self, "PixivSpider", "登录失败，请检查你的网络链接或用户名和密码", QMessageBox.Yes)
 
     def clickBegin(self):
         if self.is_crawling:
+            return
+        if not self.has_login:
+            QMessageBox.information(self, "PixivSpider", "你还没有登录！", QMessageBox.Yes)
             return
         data = self.getInformation()
         if data == None:

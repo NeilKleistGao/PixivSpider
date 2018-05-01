@@ -18,11 +18,15 @@ class PixivSpider(object):
         self.login_url = "https://accounts.pixiv.net/api/login?lang=zh"
         self.return_url = "https://www.pixiv.net"
         self.key_url = "https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index"
+        self.detail_url = "https://www.pixiv.net/member_illust.php?mode=medium&illust_id="
         self.main_url = ""
 
         self.path = ""
 
         self.header = { "Referer": "https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36" }
+        self.headerForDetail = { "Referer": "",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36" } 
         self.headerForDownload = { "Referer": "",
@@ -93,7 +97,7 @@ class PixivSpider(object):
         response = self.session.get(self.main_url, headers = self.header)
         if self.is_customize:
             bs = BeautifulSoup(response.text, "lxml")
-            self.total_count = int(bs.find('span').string[:-1])
+            self.total_count = int(bs.find_all('span')[12].string[:-1])
             self.page_count = int(math.ceil(float(self.total_count) / self.COUNT_IN_PAGE))
             if self.page_count > self.PAGE_MAX:
                 self.page_count = self.PAGE_MAX
@@ -110,16 +114,32 @@ class PixivSpider(object):
 
     def getDataThreading(self):
         for i in range(1, self.page_count + 1):
-            print(self.main_url + "&p=" + str(i))
-            self.getImageData(self.main_url + "&p=" + str(i))
+            self.getImagePage(self.main_url + "&p=" + str(i))
+        self.total_count = self.real_count
 
-    def getImageData(self, url):
-        response = self.session.get(self.key_url, headers = self.header)
+    def getImagePage(self, url):
+        response = self.session.get(self.main_url, headers = self.header)
         bs = BeautifulSoup(response.text, "lxml")
         if self.is_customize:
-            pass
+            item = bs.find_all("input")[3]
+            ptn = r'"illustId":"(?P<pid>\d+)"'
+            pid_list = re.findall(ptn, item["data-items"])
+            for i in pid_list:
+                self.getDetail(self.detail_url + str(i), url)
         else:
-            pass
+            items = bs.find_all("img")
+            for i in items:
+                if i.has_attr("data-src"):
+                    item = i["data-src"]
+                    ptn = r"(?P<pid>\d+)_p0_master1200"
+                    pid = re.search(ptn, item).group("pid")
+                    self.getDetail(self.detail_url + str(pid), url)
+
+                    self.real_count = self.real_count + 1
+
+    def getDetail(self, url, parent):
+        self.headerForDetail["Referer"] = parent
+        response = self.session.get(url, headers = self.headerForDetail)
     
     def downloadThreading(self):
         while not self.hasFinished():
