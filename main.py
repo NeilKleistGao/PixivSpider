@@ -152,6 +152,7 @@ class mainWidget(QWidget):
         self.has_login = False
         self.is_crawling = False
         self.tag = ""
+        self.crawl_level = 0
 
     def clickLogin(self):
         username = self.userEdit.text().strip()
@@ -173,7 +174,7 @@ class mainWidget(QWidget):
         data = self.getInformation()
         if data == None:
             return
-        self.spider.crawl(self.tag ,data)
+        self.spider.crawl(self.tag ,data, self.crawl_level)
         self.is_crawling = True
         _translate = QtCore.QCoreApplication.translate
         self.label_6.setText(_translate("Form", "状态：正在爬取..."))
@@ -196,18 +197,17 @@ class mainWidget(QWidget):
                 url = url % self.tag
         else:
             self.tag = self.typeBox.currentText()
-        crawl_level = 0
+        self.crawl_level = 0
         if self.lv2Button.isChecked():
-            crawl_level = 100
+            self.crawl_level = 100
         elif self.lv3Button.isChecked():
-            crawl_level = 500
+            self.crawl_level = 500
         elif self.lv4Button.isChecked():
-            crawl_level = 1000
+            self.crawl_level = 1000
         elif self.lv5Button.isChecked():
-            crawl_level = 5000
+            self.crawl_level = 5000
         
         data.url = url
-        data.lowest_starts = crawl_level
         return data
 
     def update(self):

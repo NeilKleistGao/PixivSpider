@@ -50,9 +50,9 @@ class PixivSpider(object):
 
         self.is_customize = False
 
-    def crawl(self, name, crawldata):
+    def crawl(self, name, crawldata, min_view):
         self.main_url = crawldata.url
-        self.min = crawldata.lowest_stars
+        self.min = min_view
         self.is_customize = crawldata.is_customize
         self.path = name + "/"
 
@@ -115,7 +115,8 @@ class PixivSpider(object):
     def getDataThreading(self):
         for i in range(1, self.page_count + 1):
             self.getImagePage(self.main_url + "&p=" + str(i))
-        self.total_count = self.real_count
+        if self.real_count > 0:
+            self.total_count = self.real_count
 
     def getImagePage(self, url):
         response = self.session.get(self.main_url, headers = self.header)
@@ -125,21 +126,31 @@ class PixivSpider(object):
             ptn = r'"illustId":"(?P<pid>\d+)"'
             pid_list = re.findall(ptn, item["data-items"])
             for i in pid_list:
-                self.getDetail(self.detail_url + str(i), url)
+                self.getDetail(self.detail_url + str(i), url, i)
         else:
             items = bs.find_all("img")
             for i in items:
                 if i.has_attr("data-src"):
                     item = i["data-src"]
-                    ptn = r"(?P<pid>\d+)_p0_master1200"
+                    ptn = r"(?P<pid>\d+)_"
                     pid = re.search(ptn, item).group("pid")
-                    self.getDetail(self.detail_url + str(pid), url)
+                    self.getDetail(self.detail_url + str(pid), url, pid)
 
                     self.real_count = self.real_count + 1
 
-    def getDetail(self, url, parent):
+    def getDetail(self, url, parent, pid):
         self.headerForDetail["Referer"] = parent
         response = self.session.get(url, headers = self.headerForDetail)
+        bs = BeautifulSoup(response.text, "lxml")
+        view = bs.find("dd").string
+        if int(view) >= self.min:
+            img = ImageData()
+            ptn = r"<span>(?P<cnt>\d+)"
+            res = re.search(ptn, response.text)
+            if res == None:
+                img.count = 1#img-original直接从这个链接获取下载地址
+            else:
+                img.count = int(res.group("cnt"))#mode=manga进入这个模式可以找到其他项
     
     def downloadThreading(self):
         while not self.hasFinished():
