@@ -10,4 +10,4 @@ class ImageData(object):
         self.parent = ""
         self.url = ""
         self.name = ""
-        self.count = 0
+        self.pid = 0
