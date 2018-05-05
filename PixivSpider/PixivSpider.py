@@ -36,6 +36,7 @@ class PixivSpider(object):
         self.session = requests.session()
 
         self.img_list = []
+        self.pid_map = {}
 
         self.total_count = 1
         self.done_count = 0
@@ -57,6 +58,7 @@ class PixivSpider(object):
         self.path = name + "/"
 
         self.getCount()
+        #print(self.total_count)
         os.makedirs(name, exist_ok = True)
         
         ts = threading.Thread(target = self.getDataThreading, name = "crawling", daemon = True)
@@ -97,11 +99,15 @@ class PixivSpider(object):
         response = self.session.get(self.main_url, headers = self.header)
         if self.is_customize:
             bs = BeautifulSoup(response.text, "lxml")
-            self.total_count = int(bs.find_all('span')[12].string[:-1])
-            self.page_count = int(math.ceil(float(self.total_count) / self.COUNT_IN_PAGE))
-            if self.page_count > self.PAGE_MAX:
-                self.page_count = self.PAGE_MAX
-                self.total_count = self.page_count * self.COUNT_IN_PAGE
+            tmp = bs.find_all("span")
+            for i in tmp:
+                if i.has_attr("class"):
+                    if "count-badge" in i["class"]:
+                        self.total_count = int(i.string[:-1])
+                        self.page_count = int(math.ceil(float(self.total_count) / self.COUNT_IN_PAGE))
+                        if self.page_count > self.PAGE_MAX:
+                            self.page_count = self.PAGE_MAX
+                            self.total_count = self.page_count * self.COUNT_IN_PAGE
         else:
             self.total_count = self.TOTAL_RANK
             self.page_count = int(self.TOTAL_RANK / self.COUNT_IN_RANK)
@@ -139,32 +145,58 @@ class PixivSpider(object):
                     self.real_count = self.real_count + 1
 
     def getDetail(self, url, parent, pid):
+        print(pid)
         self.headerForDetail["Referer"] = parent
         response = self.session.get(url, headers = self.headerForDetail)
         bs = BeautifulSoup(response.text, "lxml")
         view = bs.find("dd").string
         if int(view) >= self.min:
-            img = ImageData()
             ptn = r"<span>(?P<cnt>\d+)"
             res = re.search(ptn, response.text)
             if res == None:
-                img.count = 1#img-original直接从这个链接获取下载地址
+                srcs = bs.find_all("img")#img-original直接从这个链接获取下载地址
+                for i in srcs:
+                    if i.has_attr("data-src"):
+                        link = i["data-src"]
+                        ptn = r"img-original"
+                        res = re.search(ptn, link)
+                        if not res == None:
+                            img = ImageData()
+                            img.parent = url
+                            img.url = link
+                            img.name = link[link.rfind('/') + 1:]
+                            img.pid = pid
+                            self.img_list.append(img)
             else:
-                img.count = int(res.group("cnt"))#mode=manga进入这个模式可以找到其他项
-    
+                url = url.replace("medium", "manga")#mode=manga进入这个模式可以找到其他项
+                response = self.session.get(url, headers = self.headerForDetail)
+                bs = BeautifulSoup(response.text, "lxml")
+                temp = bs.find_all("img")
+                for i in temp:
+                    if i.has_attr("data-src"):
+                        img = ImageData()
+                        img.parent = url
+                        img.url = i["data-src"]
+                        img.name = img.url[img.url.rfind('/') + 1:]
+                        img.pid = pid
+                        self.img_list.append(img)
+        else:
+            self.done_count = self.done_count + 1
+
     def downloadThreading(self):
         while not self.hasFinished():
             if len(self.img_list) > 0:
                 self.downloadImage(self.img_list[0])
                 del self.img_list[0]
-                self.done_count = self.done_count + 1
             else:
                 time.sleep(1)
 
     def downloadImage(self, image_data):
+        print(image_data.name)
         self.headerForDownload["Referer"] = image_data.parent
-        for i in range(0, image_data.count, headers = self.headerForDownload):
-            url = image_data.url % i
-            response = requests.get(url)
-            with open(path + (image_data.name % i), "wb") as fp:
-                fp.write(response.content)
+        response = requests.get(image_data.url, headers = self.headerForDownload)
+        with open(self.path + image_data.name, "wb") as fp:
+            fp.write(response.content)
+        if not image_data.pid in self.pid_map:
+            self.pid_map[image_data.pid] = True
+            self.done_count = self.done_count + 1
